@@ -120,6 +120,7 @@ struct HeadingBuffer<'a> {
 struct LinkIntercept<'a> {
     dest_url: CowStr<'a>,
     title: CowStr<'a>,
+    #[allow(unused)]
     id: CowStr<'a>,
 }
 

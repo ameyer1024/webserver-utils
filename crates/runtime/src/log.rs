@@ -32,7 +32,7 @@ macro_rules! instrument {
 }
 
 
-fn ansi_to_html(msg: &str) -> String {
+pub fn ansi_to_html(msg: &str) -> String {
     use std::fmt::Write;
     let mut out = String::with_capacity(msg.len());
     let msg = crate::template::sanitize_html_to_text(msg); // TODO: this should be done *after* processing
@@ -72,19 +72,19 @@ fn ansi_to_html(msg: &str) -> String {
     out
 }
 
-struct Writer {
+pub struct AnsiHtmlWriter {
     buffer: Vec<u8>,
     broadcast: tokio::sync::broadcast::Sender<std::sync::Arc<str>>,
 }
-impl Writer {
-    fn from_channel(tx: tokio::sync::broadcast::Sender<std::sync::Arc<str>>) -> Self {
+impl AnsiHtmlWriter {
+    pub fn from_channel(tx: tokio::sync::broadcast::Sender<std::sync::Arc<str>>) -> Self {
         Self {
             buffer: Vec::new(),
             broadcast: tx,
         }
     }
 }
-impl std::io::Write for Writer {
+impl std::io::Write for AnsiHtmlWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if let Some(newline) = buf.iter().position(|c| *c == b'\n') {
             self.buffer.extend(&buf[..newline]);
@@ -134,7 +134,7 @@ pub fn setup_logger(crate_name: &'static str) -> Result<tokio::sync::broadcast::
         // .with(tracing_subscriber::fmt::layer()
             // .with_ansi(false)
             // .fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new().with_ansi(false))
-            // .with_writer(move || Writer::from_channel(tx.clone()))
+            // .with_writer(move || AnsiHtmlWriter::from_channel(tx.clone()))
             // .with_filter(env_filter.clone()))
         ;
 

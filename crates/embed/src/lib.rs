@@ -304,15 +304,14 @@ pub fn parse_document(bytes: &[u8], content_type: Option<&str>, url: &url::Url) 
 
     let meta_tags = Selector::parse("meta").unwrap();
     for tag in document.select(&meta_tags) {
-        if let Some(charset) = tag.attr("charset") {
-            // TODO: ???
-        } else if let Some(equiv) = tag.attr("http-equiv") {
-            let content = tag.attr("content");
-            // redirects?
+        if let Some(_charset) = tag.attr("charset") {
+            // TODO: support non-utf8 pages
+        } else if let Some(_equiv) = tag.attr("http-equiv") {
+            let _content = tag.attr("content");
+            // TODO: handle http-equiv refresh redirects?
 
         } else if let (Some(name), Some(value)) = (tag.attr("name").or_else(|| tag.attr("property")), tag.attr("content")) {
             // why does open graph protocol use a non-standard HTML attr?  `name` exists and works fine...
-
 
             if name.starts_with("og:") {
                 opengraph.process_prop(&name["og:".len() ..], value);
@@ -326,7 +325,9 @@ pub fn parse_document(bytes: &[u8], content_type: Option<&str>, url: &url::Url) 
                 },
                 "author" => (),
                 "keywords" => (),
-                "theme-color" => (),
+                "theme-color" => {
+                    // May be useful to explicitly handle the highlight/brand color
+                },
                 "color-scheme" => (),
                 "robots" => (),
                 _ => (),
