@@ -1,32 +1,4 @@
-[package]
-name = "runtime"
-version = "0.1.0"
-edition = "2021"
-
-[lib]
-
-[dependencies]
-thiserror = "1"
-
-tokio = { version = "1.28", features = ["macros", "signal", "rt"] }
-tokio-util = "0.7"
-flume = "0.11"
-
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.16", default-features = false, features = ["std", "registry"] }
-tracing-tree = "0.3.0"
-
-# local-offset feature is fully broken on unix-like systems
-time = { version = "0.3", features = ["serde-human-readable", "macros"] }
-
-url = "2.5"
-ammonia = "3"
-percent-encoding = "2"
-pulldown-cmark = { version = "0.11", default-features = false }
-pulldown-cmark-escape = "0.11"
-
-rand = "0.8"
-rand_pcg = "0.3"
-rand_seeder = "0.2"
-
-next-gen = "0.1"
+[workspace]
+members = [
+    "runtime"
+]
