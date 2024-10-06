@@ -812,7 +812,7 @@ where
                 // let resolved = base.join(&href)
                 //     .map(|u| u[url::Position::BeforePath..].to_owned().into())
                 //     .unwrap_or_else(|_e| dest_url.into());
-                let href = super::percent_encode(&format!("{}{}", base, dest_url));
+                let href = crate::sanitize::percent_encode(&format!("{}{}", base, dest_url));
                 Ok(href.into())
             }
         } else {

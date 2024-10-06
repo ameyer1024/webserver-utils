@@ -1,4 +1,7 @@
 [workspace]
+resolver = "2"
 members = [
-    "runtime"
+    "crates/embed", "crates/render-md",
+    "crates/runtime",
+    "crates/runtime-axum"
 ]

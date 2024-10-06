@@ -32,10 +32,37 @@ macro_rules! instrument {
 }
 
 
+/// Safe in any html destination besides unquoted attributes (why do those exist...)
+fn write_html_escaped(w: &mut impl std::fmt::Write, text: &str) -> std::fmt::Result {
+    // Simplified version of ammonia's clean_text
+    for c in text.chars() {
+        let replacement = match c {
+            // this character, when confronted, will start a tag
+            '<' => "&lt;",
+            // in an unquoted attribute, will end the attribute value
+            '>' => "&gt;",
+            // in an attribute surrounded by double quotes, this character will end the attribute value
+            '\"' => "&quot;",
+            // in an attribute surrounded by single quotes, this character will end the attribute value
+            '\'' => "&apos;",
+            // starts an entity reference
+            '&' => "&amp;",
+            // a spec-compliant browser will perform this replacement anyway, but the middleware might not
+            '\0' => "&#65533;",
+            // ALL OTHER CHARACTERS ARE PASSED THROUGH VERBATIM
+            c => {
+                w.write_char(c)?;
+                continue;
+            }
+        };
+        w.write_str(replacement)?;
+    }
+    Ok(())
+}
+
 pub fn ansi_to_html(msg: &str) -> String {
     use std::fmt::Write;
     let mut out = String::with_capacity(msg.len());
-    let msg = crate::template::sanitize_html_to_text(msg); // TODO: this should be done *after* processing
     let mut msg = &msg[..];
     let mut count = 0;
     while let Some(i) = msg.find("\x1b[") {
@@ -56,7 +83,11 @@ pub fn ansi_to_html(msg: &str) -> String {
                     count = 0;
                 }
                 _ => {
-                    write!(out, "<span class='ansi-{}{}{}'>", params, interm, c).unwrap();
+                    write!(out, "<span class='ansi-").ok();
+                    write_html_escaped(&mut out, params).ok();
+                    write_html_escaped(&mut out, interm).ok();
+                    write_html_escaped(&mut out, c.encode_utf8(&mut [0; 4])).ok();
+                    write!(out, "'>").ok();
                     count += 1;
                 }
             }
