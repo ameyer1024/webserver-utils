@@ -16,34 +16,23 @@ pub struct Metadata {
 
 pub async fn rewrite_html<F, Fu>(
     html: String,
-    base_url: Option<&str>,
     handle_embed: F,
 ) -> Result<String, anyhow::Error>
-    where F: Fn(url::Url, bool) -> Fu,
+    where F: Fn(String, bool) -> Fu,
         Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
 {
     use lol_html::{rewrite_str, element, RewriteStrSettings};
 
-    let base_url = base_url.and_then(|s| url::Url::parse(s).ok());
-
     #[tracing::instrument(skip(handle_embed))]
     async fn render_embed<F, Fu>(
         url: &str,
-        base_url: &Option<url::Url>,
         preview: bool,
         handle_embed: F,
     ) -> Result<Option<String>, anyhow::Error>
-        where F: Fn(url::Url, bool) -> Fu,
+        where F: Fn(String, bool) -> Fu,
             Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
     {
-        if let Ok(Some(resolved_url)) = url::Url::parse(&url).map(Some)
-            .or_else(|_| base_url.as_ref().map(|b| b.join(&url)).transpose())
-        {
-            handle_embed(resolved_url, preview).await
-        } else {
-            // Bad URL
-            Ok(None)
-        }
+        handle_embed(url.into(), preview).await
     }
 
     let future = async move {
@@ -119,7 +108,7 @@ pub async fn rewrite_html<F, Fu>(
                     if let Some(url) = el.get_attribute("href") {
                         let preview = matches!(el.get_attribute("embed").as_deref(), Some("full"));
                         let rendered = awaiter.block_on(async {
-                            render_embed(&url, &base_url, preview, &handle_embed).await
+                            render_embed(&url, preview, &handle_embed).await
                         });
                         if let Ok(Some(rendered)) = rendered {
                             el.replace(&rendered, lol_html::html_content::ContentType::Html);
@@ -178,7 +167,7 @@ pub async fn render_page_markdown<F, Fu>(
     base_url: Option<&str>,
     handle_embed: F,
 ) -> Result<Option<(String, Metadata)>, anyhow::Error>
-    where F: Fn(url::Url, bool) -> Fu,
+    where F: Fn(String, bool) -> Fu,
         Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
 {
     let md = match fs_err::read_to_string(&path) {
@@ -188,7 +177,6 @@ pub async fn render_page_markdown<F, Fu>(
         },
         Err(e) => return Err(e.into()),
     };
-    // TODO: provide base URL for relative links?
     let (mut html, meta) = crate::process_markdown(&md, base_url);
     let meta = meta.first().map(|s| serde_yaml::from_str::<Metadata>(&s)).transpose();
     let meta = match meta {
@@ -201,7 +189,7 @@ pub async fn render_page_markdown<F, Fu>(
         }
     };
 
-    html = rewrite_html(html, base_url, handle_embed).await?;
+    html = rewrite_html(html, handle_embed).await?;
 
     // let sanitized = runtime::template::sanitize_html_trusted(&html);
     let sanitized = html;
