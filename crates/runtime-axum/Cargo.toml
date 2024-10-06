@@ -1,0 +1,25 @@
+[package]
+name = "runtime-axum"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+runtime = { path = "../runtime" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "1"
+
+tokio = { version = "1.28", features = ["macros", "rt-multi-thread", "signal"] }
+tokio-util = "0.7"
+
+axum = { version = "0.7", features = ["macros", "ws"] }
+axum-server = { version = "0.7.1", features = [] }
+axum-extra = { version = "0.9", features = ["cookie-private"] }
+tower = { version = "0.5" }
+tower-http = { version = "0.6", features = ["fs", "trace", "catch-panic"] }
+tracing = "0.1.37"
+
+# local-offset feature is fully broken on unix-like systems
+time = { version = "0.3", features = ["serde-human-readable", "macros"] }
