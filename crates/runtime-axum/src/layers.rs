@@ -117,9 +117,7 @@ pub fn make_trace_layer() -> impl tower::Layer<
             };
             span
         })
-        .on_request(
-            tower_trace::DefaultOnRequest::new()
-        )
+        .on_request(())
         .on_response(
             tower_trace::DefaultOnResponse::new()
                 .latency_unit(tower_http::LatencyUnit::Micros)
