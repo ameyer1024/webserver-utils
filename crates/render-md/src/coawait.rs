@@ -29,17 +29,12 @@ mod wrapper {
 pub use wrapper::UnsafeSendWrapper;
 
 #[must_use]
-pub fn coro_await<'a, F, Out>(f: F) -> CoroAwaitFuture<'a, Out>
+pub fn coro_await<F, Out>(f: F) -> CoroAwaitFuture<Out>
 where
-    F: FnOnce(&CoroAwaiter<'_>) -> Out + 'a,
-    Out: 'a,
+    F: FnOnce(&CoroAwaiter<'_>) -> Out + 'static,
+    Out: 'static,
 {
-    let coroutine = corosensei::ScopedCoroutine::<
-        *mut std::task::Context<'static>,
-        (),
-        Out,
-        corosensei::stack::DefaultStack,
-    >::new(move |yielder, res| {
+    let coroutine = corosensei::Coroutine::new(move |yielder, res| {
         let awaiter = CoroAwaiter {
             yielder,
             context: std::cell::Cell::new(Some(res)),
@@ -49,9 +44,8 @@ where
     CoroAwaitFuture { coroutine }
 }
 
-pub struct CoroAwaitFuture<'a, Out: 'a> {
-    coroutine: corosensei::ScopedCoroutine<
-        'a,
+pub struct CoroAwaitFuture<Out> {
+    coroutine: corosensei::Coroutine<
         *mut std::task::Context<'static>,
         (),
         Out,
@@ -59,7 +53,7 @@ pub struct CoroAwaitFuture<'a, Out: 'a> {
     >,
 }
 
-impl<'a, Out> std::future::Future for CoroAwaitFuture<'a, Out> {
+impl<Out> std::future::Future for CoroAwaitFuture<Out> {
     type Output = Out;
     fn poll(
         mut self: std::pin::Pin<&mut Self>,

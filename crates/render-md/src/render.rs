@@ -11,8 +11,8 @@ pub struct Metadata {
 
 pub async fn rewrite_html<F, Fu>(html: String, handle_embed: F) -> Result<String, anyhow::Error>
 where
-    F: Fn(String, bool) -> Fu,
-    Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
+    F: Fn(String, bool) -> Fu + 'static,
+    Fu: Future<Output = Result<Option<String>, anyhow::Error>> + 'static,
 {
     use lol_html::{element, rewrite_str, RewriteStrSettings};
 
@@ -160,8 +160,8 @@ pub async fn render_page_markdown<F, Fu>(
     handle_embed: F,
 ) -> Result<(String, Metadata), anyhow::Error>
 where
-    F: Fn(String, bool) -> Fu,
-    Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
+    F: Fn(String, bool) -> Fu + 'static,
+    Fu: Future<Output = Result<Option<String>, anyhow::Error>> + 'static,
 {
     let (mut html, meta) = crate::process_markdown(source, base_url);
     let meta = meta

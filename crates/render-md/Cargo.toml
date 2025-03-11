@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pulldown-cmark = { version = "0.11", default-features = false }
+pulldown-cmark = { version = "0.13", default-features = false }
 pulldown-cmark-escape = "0.11"
 
 next-gen = "0.1"
@@ -12,11 +12,15 @@ next-gen = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 anyhow = "1"
-lol_html = "2"
-corosensei = "0.1.4"
+
+# Bump transitive deps of lol_html
+# lol_html = "2"
+lol_html = { git = "https://github.com/cloudflare/lol-html", rev = "ca6e8c4441492ec3f8fdfdd3c2d8b24a0fbe65a4" }
+
+corosensei = "0.2"
 pin-project-lite = "0.2"
 tracing = "0.1.37"
 url = "2"
 
 percent-encoding = "2"
-ammonia = "3"
+ammonia = "4"

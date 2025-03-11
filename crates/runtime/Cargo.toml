@@ -6,7 +6,7 @@ edition = "2021"
 [lib]
 
 [dependencies]
-thiserror = "1"
+thiserror = "2"
 
 tokio = { version = "1.28", features = ["macros", "signal", "rt"] }
 tokio-util = "0.7"

@@ -1,30 +1,33 @@
-use axum::Router;
-
-use runtime::instrument;
-use runtime::utils::enclose;
-
 use std::net::SocketAddr;
+
+use axum::Router;
+use tokio::net::TcpListener;
+use tower_http::timeout::TimeoutLayer;
 
 pub async fn run_server(
     cancel: tokio_util::sync::CancellationToken,
     bind: SocketAddr,
     app: Router,
 ) -> Result<(), std::io::Error> {
-    let handle = axum_server::Handle::new();
+    let shutdown_timeout = std::time::Duration::from_secs(8);
+    let shutdown_signal = async move {
+        cancel.cancelled().await;
+        info!(
+            "Attempting graceful webserver shutdown with {}s timeout",
+            shutdown_timeout.as_secs_f32()
+        );
+    };
 
-    tokio::task::spawn(
-        instrument!("shutdown task"; enclose!([clone handle] async move {
-            cancel.cancelled().await;
+    let app = app.layer(TimeoutLayer::new(shutdown_timeout));
 
-            let timeout = std::time::Duration::from_secs(8);
-            info!("Attempting graceful webserver shutdown with {}s timeout", timeout.as_secs_f32());
-            handle.graceful_shutdown(Some(timeout));
-        })),
-    );
+    let listener = TcpListener::bind(bind).await?;
 
-    axum_server::bind(bind)
-        .handle(handle)
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-        .await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal)
+    .await?;
+
     Ok(())
 }

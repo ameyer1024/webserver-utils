@@ -615,6 +615,29 @@ where
                 self.in_non_writing_block = true;
                 Ok(())
             }
+            Tag::DefinitionList => {
+                if self.end_newline {
+                    self.write("<dl>\n")
+                } else {
+                    self.write("\n<dl>\n")
+                }
+            }
+            Tag::DefinitionListTitle => {
+                if self.end_newline {
+                    self.write("<dt>")
+                } else {
+                    self.write("\n<dt>")
+                }
+            }
+            Tag::DefinitionListDefinition => {
+                if self.end_newline {
+                    self.write("<dd>")
+                } else {
+                    self.write("\n<dd>")
+                }
+            }
+            Tag::Subscript => self.write("<sub>"),
+            Tag::Superscript => self.write("<sup>"),
         }
     }
 
@@ -715,7 +738,7 @@ where
                 }
                 self.table_cell_index += 1;
             }
-            TagEnd::BlockQuote => {
+            TagEnd::BlockQuote(..) => {
                 self.write("</blockquote>\n")?;
             }
             TagEnd::CodeBlock => {
@@ -771,6 +794,21 @@ where
             }
             TagEnd::MetadataBlock(_) => {
                 self.in_non_writing_block = false;
+            }
+            TagEnd::DefinitionList => {
+                self.write("</dl>\n")?;
+            }
+            TagEnd::DefinitionListTitle => {
+                self.write("</dt>\n")?;
+            }
+            TagEnd::DefinitionListDefinition => {
+                self.write("</dd>\n")?;
+            }
+            TagEnd::Superscript => {
+                self.write("</sup>")?;
+            }
+            TagEnd::Subscript => {
+                self.write("</sub>")?;
             }
         }
         Ok(())
