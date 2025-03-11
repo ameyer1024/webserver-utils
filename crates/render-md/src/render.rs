@@ -1,15 +1,11 @@
 
-use std::path::Path;
 use std::future::Future;
-
-// use runtime::utils::enclose;
 use crate::coawait::{coro_await, UnsafeSendWrapper};
-
-
 
 #[derive(serde::Deserialize, Default)]
 pub struct Metadata {
     pub title: Option<String>,
+    pub tags: Option<Vec<String>>,
     #[serde(flatten)]
     pub _rest: std::collections::HashMap<String, serde_yaml::Value>,
 }
@@ -161,23 +157,16 @@ pub async fn rewrite_html<F, Fu>(
     unsafe { UnsafeSendWrapper::new(future) }.await
 }
 
-#[tracing::instrument(skip(handle_embed))]
+#[tracing::instrument(skip(source, handle_embed))]
 pub async fn render_page_markdown<F, Fu>(
-    path: &Path,
+    source: &str,
     base_url: Option<&str>,
     handle_embed: F,
-) -> Result<Option<(String, Metadata)>, anyhow::Error>
+) -> Result<(String, Metadata), anyhow::Error>
     where F: Fn(String, bool) -> Fu,
         Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
 {
-    let md = match fs_err::read_to_string(&path) {
-        Ok(text) => text,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(None);
-        },
-        Err(e) => return Err(e.into()),
-    };
-    let (mut html, meta) = crate::process_markdown(&md, base_url);
+    let (mut html, meta) = crate::process_markdown(source, base_url);
     let meta = meta.first().map(|s| serde_yaml::from_str::<Metadata>(&s)).transpose();
     let meta = match meta {
         Ok(Some(m)) => m,
@@ -193,5 +182,5 @@ pub async fn render_page_markdown<F, Fu>(
 
     // let sanitized = runtime::template::sanitize_html_trusted(&html);
     let sanitized = html;
-    Ok(Some((sanitized, meta)))
+    Ok((sanitized, meta))
 }

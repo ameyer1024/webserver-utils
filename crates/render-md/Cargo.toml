@@ -9,7 +9,6 @@ pulldown-cmark-escape = "0.11"
 
 next-gen = "0.1"
 
-fs-err = "2.11"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 anyhow = "1"
