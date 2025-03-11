@@ -1,4 +1,3 @@
-
 // From https://github.com/raphlinus/pulldown-cmark
 // A modified version of the HTML writer that currently:
 // - converts soft breaks into hard breaks
@@ -30,20 +29,26 @@ THE SOFTWARE.
 use std::collections::HashMap;
 use std::io::Write;
 
-use pulldown_cmark_escape::{escape_href, escape_html, escape_html_body_text, StrWrite, IoWriter};
-use pulldown_cmark::{BlockQuoteKind, CowStr};
 use pulldown_cmark::Event;
 use pulldown_cmark::{Alignment, CodeBlockKind, LinkType, Tag, TagEnd};
+use pulldown_cmark::{BlockQuoteKind, CowStr};
+use pulldown_cmark_escape::{escape_href, escape_html, escape_html_body_text, IoWriter, StrWrite};
 
 enum TableState {
     Head,
     Body,
 }
 
-pub fn metadata_extractor<'a: 'b, 'b>(iter: impl Iterator<Item = Event<'a>> + 'b, metadata_blocks: &'b mut Vec<String>) -> impl Iterator<Item = Event<'a>> + 'b {
+pub fn metadata_extractor<'a: 'b, 'b>(
+    iter: impl Iterator<Item = Event<'a>> + 'b,
+    metadata_blocks: &'b mut Vec<String>,
+) -> impl Iterator<Item = Event<'a>> + 'b {
     use next_gen::generator_fn::CallBoxed;
     #[next_gen::generator(yield(Event<'a>))]
-    fn metadata_extractor_inner<'a, 'b>(mut iter: impl Iterator<Item = Event<'a>>, metadata_blocks: &'b mut Vec<String>) {
+    fn metadata_extractor_inner<'a, 'b>(
+        mut iter: impl Iterator<Item = Event<'a>>,
+        metadata_blocks: &'b mut Vec<String>,
+    ) {
         while let Some(elem) = iter.next() {
             match elem {
                 Event::Start(Tag::MetadataBlock(_)) => {
@@ -52,11 +57,11 @@ pub fn metadata_extractor<'a: 'b, 'b>(iter: impl Iterator<Item = Event<'a>> + 'b
                         match elem {
                             Event::End(TagEnd::MetadataBlock(_)) => break,
                             Event::Text(t) => text.push_str(&*t),
-                            _ => unimplemented!()
+                            _ => unimplemented!(),
                         }
                     }
                     metadata_blocks.push(text);
-                },
+                }
                 _ => yield_!(elem),
             }
         }
@@ -144,7 +149,10 @@ impl InterceptError<std::io::Error> {
         }
     }
 }
-impl<W> StrWrite for InterceptWriter<W> where W: StrWrite {
+impl<W> StrWrite for InterceptWriter<W>
+where
+    W: StrWrite,
+{
     type Error = InterceptError<W::Error>;
     fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
         if let Some(buf) = self.intercept.last_mut() {
@@ -196,10 +204,17 @@ where
     W: StrWrite,
 {
     fn new(iter: I, writer: W, options: Options) -> Self {
-        assert!(options.base_url.as_ref().map(|s| s.ends_with("/")).unwrap_or(true));
+        assert!(options
+            .base_url
+            .as_ref()
+            .map(|s| s.ends_with("/"))
+            .unwrap_or(true));
         Self {
             iter,
-            writer: InterceptWriter { inner: writer, intercept: Vec::new() },
+            writer: InterceptWriter {
+                inner: writer,
+                intercept: Vec::new(),
+            },
             base_url: options.base_url.clone(),
             // base_url: options.base_url.as_ref()
             //     .map(|u| url::Url::parse("http://_").unwrap()
@@ -262,7 +277,11 @@ where
                     self.write("</code>")?;
                 }
                 ref event @ (Event::InlineMath(ref text) | Event::DisplayMath(ref text)) => {
-                    let mode = if matches!(event, Event::InlineMath(..)) { "$" } else { "$$" };
+                    let mode = if matches!(event, Event::InlineMath(..)) {
+                        "$"
+                    } else {
+                        "$$"
+                    };
                     // TODO: actual math-mode handling
                     // (KaTeX / client javacript, or something serverside?  Could bake a svg sheet and cache it)
                     self.write("<code>")?;
@@ -283,7 +302,7 @@ where
                     }
                     match self.options.soft_breaks_as_hard {
                         false => self.write_newline()?,
-                        true  => self.write("<br />\n")?,
+                        true => self.write("<br />\n")?,
                     }
                 }
                 Event::HardBreak => {
@@ -324,9 +343,8 @@ where
         level: pulldown_cmark::HeadingLevel,
         id: Option<CowStr<'a>>,
         classes: Vec<CowStr<'a>>,
-        attrs: Vec<(CowStr<'a>, Option<CowStr<'a>>)>
+        attrs: Vec<(CowStr<'a>, Option<CowStr<'a>>)>,
     ) -> Result<(), InterceptError<W::Error>> {
-
         match self.options.heading_anchor_links {
             HeadingAnchorMode::None => (),
             HeadingAnchorMode::HeadingIsLink => (),
@@ -334,7 +352,7 @@ where
                 self.write("<div class=\"heading-wrapper ")?;
                 write!(&mut self.writer, "{}", level)?;
                 self.write("\">")?;
-            },
+            }
             HeadingAnchorMode::LinkInHeading => (),
         }
 
@@ -377,7 +395,7 @@ where
                     escape_href(&mut self.writer, &id)?;
                     self.write("\" class=\"heading-anchor-inner\">")?;
                 }
-            },
+            }
             HeadingAnchorMode::LinkAfterHeading => (),
             HeadingAnchorMode::LinkInHeading => (),
         }
@@ -616,10 +634,14 @@ where
                     if id.is_none() {
                         let string = std::mem::take(&mut self.heading_buffer.text_buffer);
 
-                        let string = string.to_lowercase().chars().filter_map(|c| match c {
-                            c if c.is_whitespace() => Some('-'),
-                            _ => Some(c),
-                        }).collect::<String>();
+                        let string = string
+                            .to_lowercase()
+                            .chars()
+                            .filter_map(|c| match c {
+                                c if c.is_whitespace() => Some('-'),
+                                _ => Some(c),
+                            })
+                            .collect::<String>();
 
                         id = Some(string.into());
                     }
@@ -639,7 +661,7 @@ where
                         if let Some(_) = &id {
                             self.write("</a>")?;
                         }
-                    },
+                    }
                     HeadingAnchorMode::LinkInHeading => {
                         if let Some(id) = &id {
                             self.write(" <a href=\"#")?;
@@ -648,7 +670,7 @@ where
                             escape_html(&mut self.writer, &id)?;
                             self.write("\">Section link</a>")?;
                         }
-                    },
+                    }
                     HeadingAnchorMode::LinkAfterHeading => (),
                 }
 
@@ -669,7 +691,7 @@ where
                             self.write("\">Section link</a>")?;
                         }
                         self.write("</div>\n")?;
-                    },
+                    }
                 }
             }
             TagEnd::Table => {
@@ -799,8 +821,11 @@ where
         }
         Ok(())
     }
-    
-    fn handle_url<'b>(&self, dest_url: &'b str) -> Result<std::borrow::Cow<'b, str>, InterceptError<W::Error>> {
+
+    fn handle_url<'b>(
+        &self,
+        dest_url: &'b str,
+    ) -> Result<std::borrow::Cow<'b, str>, InterceptError<W::Error>> {
         if let Some(base) = &self.base_url {
             if dest_url.starts_with("/") || dest_url.starts_with("#") || dest_url.contains("://") {
                 Ok(dest_url.into())
@@ -833,5 +858,7 @@ where
     I: Iterator<Item = Event<'a>>,
     W: Write,
 {
-    HtmlWriter::new(iter, IoWriter(writer), options).run().map_err(InterceptError::flatten)
+    HtmlWriter::new(iter, IoWriter(writer), options)
+        .run()
+        .map_err(InterceptError::flatten)
 }

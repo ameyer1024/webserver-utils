@@ -1,4 +1,3 @@
-
 pub fn seeded_rng(seed: &str) -> impl rand::Rng {
     rand_seeder::Seeder::from(seed).make_rng::<rand_pcg::Pcg64>()
 }
@@ -32,7 +31,11 @@ pub enum DateFmt {
     Shorter,
 }
 
-pub fn format_date(date: &time::OffsetDateTime, offset: Option<time::UtcOffset>, mode: DateFmt) -> String {
+pub fn format_date(
+    date: &time::OffsetDateTime,
+    offset: Option<time::UtcOffset>,
+    mode: DateFmt,
+) -> String {
     let offset = offset.unwrap_or_else(default_offset);
     let current = time::OffsetDateTime::now_utc().to_offset(offset);
     let current_year = current.year();
@@ -51,7 +54,7 @@ pub fn format_date(date: &time::OffsetDateTime, offset: Option<time::UtcOffset>,
             } else {
                 format!("{month} {day:02} {year:04}, {hour:02}:{minute:02}")
             }
-        },
+        }
         DateFmt::Shorter => {
             if year == current_year {
                 format!("{month} {day:02}")
@@ -100,7 +103,7 @@ pub fn format_age(date: &time::OffsetDateTime, fmt: DurationFmt) -> String {
                 write!(out, "{}s", seconds).unwrap();
             }
             write!(out, " ago").unwrap();
-        },
+        }
         DurationFmt::Short => {
             if weeks > 0 {
                 write!(out, "{} week{}", weeks, plural(weeks)).unwrap();
@@ -115,11 +118,17 @@ pub fn format_age(date: &time::OffsetDateTime, fmt: DurationFmt) -> String {
                 write!(out, "{} sec{}", seconds, plural(seconds)).unwrap();
             }
             write!(out, " ago").unwrap();
-        },
+        }
         DurationFmt::Long => {
-            if days > 0 { write!(out, "{} day{} ", days, plural(days)).unwrap(); }
-            if hours > 0 { write!(out, "{} hour{} ", hours, plural(hours)).unwrap(); }
-            if minutes > 0 { write!(out, "{} minute{} ", minutes, plural(minutes)).unwrap(); }
+            if days > 0 {
+                write!(out, "{} day{} ", days, plural(days)).unwrap();
+            }
+            if hours > 0 {
+                write!(out, "{} hour{} ", hours, plural(hours)).unwrap();
+            }
+            if minutes > 0 {
+                write!(out, "{} minute{} ", minutes, plural(minutes)).unwrap();
+            }
             if days <= 0 && hours <= 0 && (seconds > 0.0 || minutes <= 0) {
                 write!(out, "{seconds:.3} seconds ").unwrap();
             }
@@ -130,5 +139,9 @@ pub fn format_age(date: &time::OffsetDateTime, fmt: DurationFmt) -> String {
 }
 
 fn plural(number: i64) -> &'static str {
-    if number != 1 { "s" } else { "" }
+    if number != 1 {
+        "s"
+    } else {
+        ""
+    }
 }

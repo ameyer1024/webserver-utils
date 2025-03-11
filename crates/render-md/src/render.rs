@@ -1,6 +1,5 @@
-
-use std::future::Future;
 use crate::coawait::{coro_await, UnsafeSendWrapper};
+use std::future::Future;
 
 #[derive(serde::Deserialize, Default)]
 pub struct Metadata {
@@ -10,14 +9,12 @@ pub struct Metadata {
     pub _rest: std::collections::HashMap<String, serde_yaml::Value>,
 }
 
-pub async fn rewrite_html<F, Fu>(
-    html: String,
-    handle_embed: F,
-) -> Result<String, anyhow::Error>
-    where F: Fn(String, bool) -> Fu,
-        Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
+pub async fn rewrite_html<F, Fu>(html: String, handle_embed: F) -> Result<String, anyhow::Error>
+where
+    F: Fn(String, bool) -> Fu,
+    Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
 {
-    use lol_html::{rewrite_str, element, RewriteStrSettings};
+    use lol_html::{element, rewrite_str, RewriteStrSettings};
 
     #[tracing::instrument(skip(handle_embed))]
     async fn render_embed<F, Fu>(
@@ -25,8 +22,9 @@ pub async fn rewrite_html<F, Fu>(
         preview: bool,
         handle_embed: F,
     ) -> Result<Option<String>, anyhow::Error>
-        where F: Fn(String, bool) -> Fu,
-            Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
+    where
+        F: Fn(String, bool) -> Fu,
+        Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
     {
         handle_embed(url.into(), preview).await
     }
@@ -99,20 +97,17 @@ pub async fn rewrite_html<F, Fu>(
                 //     buffer.borrow_mut().push_str(text.as_str());
                 //     Ok(())
                 // }),
-
                 element!("a[embed]", |el| {
                     if let Some(url) = el.get_attribute("href") {
                         let preview = matches!(el.get_attribute("embed").as_deref(), Some("full"));
-                        let rendered = awaiter.block_on(async {
-                            render_embed(&url, preview, &handle_embed).await
-                        });
+                        let rendered = awaiter
+                            .block_on(async { render_embed(&url, preview, &handle_embed).await });
                         if let Ok(Some(rendered)) = rendered {
                             el.replace(&rendered, lol_html::html_content::ContentType::Html);
                         }
                     }
                     Ok(())
                 }),
-
                 element!("a[href^='##']", |el| {
                     if let Some(url) = el.get_attribute("href") {
                         // TODO: this is a html injection vuln (user can put in ##<script>...</script>##about:blank as url)
@@ -131,7 +126,7 @@ pub async fn rewrite_html<F, Fu>(
                 RewriteStrSettings {
                     element_content_handlers,
                     ..RewriteStrSettings::default()
-                }
+                },
             );
 
             // drop(closures);
@@ -139,20 +134,21 @@ pub async fn rewrite_html<F, Fu>(
             // let b = res.unwrap();
             // Ok(b)
             res
-        }).await
-            .map_err(Into::into)
+        })
+        .await
+        .map_err(Into::into)
     };
 
     // Safety:
-    // 
+    //
     // lol_html internally uses `Rc`s and `RefCell`s, so it is not safe to use across
     // multiple threads.  However, the `Rc`s can never escape this future/task, it is
     // safe to use within the current task.
-    // 
+    //
     // Neither corosensei/lol_html use thread local variables, so they do not depend on
     // the OS thread at all -- thus this *task* can be sent between OS threads, even
     // though its contents cannot be sent between *tasks*.
-    // 
+    //
     // Somewhat relevant: https://matklad.github.io/2023/12/10/nsfw.html
     unsafe { UnsafeSendWrapper::new(future) }.await
 }
@@ -163,11 +159,15 @@ pub async fn render_page_markdown<F, Fu>(
     base_url: Option<&str>,
     handle_embed: F,
 ) -> Result<(String, Metadata), anyhow::Error>
-    where F: Fn(String, bool) -> Fu,
-        Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
+where
+    F: Fn(String, bool) -> Fu,
+    Fu: Future<Output = Result<Option<String>, anyhow::Error>>,
 {
     let (mut html, meta) = crate::process_markdown(source, base_url);
-    let meta = meta.first().map(|s| serde_yaml::from_str::<Metadata>(&s)).transpose();
+    let meta = meta
+        .first()
+        .map(|s| serde_yaml::from_str::<Metadata>(&s))
+        .transpose();
     let meta = match meta {
         Ok(Some(m)) => m,
         Ok(None) => Metadata::default(),

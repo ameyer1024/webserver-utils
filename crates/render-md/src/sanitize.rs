@@ -1,4 +1,3 @@
-
 pub fn sanitize_html(html: &str) -> String {
     // ammonia::clean(html)
     ammonia::Builder::default()
@@ -36,8 +35,23 @@ pub fn sanitize_html_trusted(html: &str) -> String {
         .add_generic_attribute_prefixes(["data-"])
         .add_generic_attributes(["style", "aria-labelledby", "aria-label", "aria-role"])
         .add_allowed_classes("a", ["heading-anchor", "heading-anchor-inner"])
-        .add_allowed_classes("div", ["footnote-definition", "heading-wrapper", "h1", "h2", "h3", "h4", "h5", "h6"])
-        .add_allowed_classes("sup", ["footnote-definition-label", "footnote-definition-reference"])
+        .add_allowed_classes(
+            "div",
+            [
+                "footnote-definition",
+                "heading-wrapper",
+                "h1",
+                "h2",
+                "h3",
+                "h4",
+                "h5",
+                "h6",
+            ],
+        )
+        .add_allowed_classes(
+            "sup",
+            ["footnote-definition-label", "footnote-definition-reference"],
+        )
         .clean_content_tags([].into())
         .add_tags(["script", "style", "template", "slot"])
         .add_tag_attributes("template", ["shadowrootmode", "name", "mode"])
@@ -83,11 +97,19 @@ pub fn sanitize_body_text(text: &str) -> String {
 }
 pub fn percent_encode(text: &str) -> String {
     const FRAGMENT: &percent_encoding::AsciiSet = &percent_encoding::CONTROLS
-        .add(b' ').add(b'\'').add(b'"')
+        .add(b' ')
+        .add(b'\'')
+        .add(b'"')
         .add(b'&')
-        .add(b'[').add(b']').add(b'\\')
-        .add(b'{').add(b'}').add(b'|')
-        .add(b'<').add(b'>').add(b'`');
+        .add(b'[')
+        .add(b']')
+        .add(b'\\')
+        .add(b'{')
+        .add(b'}')
+        .add(b'|')
+        .add(b'<')
+        .add(b'>')
+        .add(b'`');
 
     percent_encoding::utf8_percent_encode(text, FRAGMENT).to_string()
 }
@@ -95,13 +117,16 @@ pub fn percent_encode(text: &str) -> String {
 pub fn sanitize_link(link: &str) -> String {
     // TODO: verify this
     let parsed_link = ammonia::Url::parse(&link).ok();
-    let link = parsed_link.and_then(|parsed_link| {
-        match parsed_link.scheme() {
+    let link = parsed_link
+        .and_then(|parsed_link| match parsed_link.scheme() {
             "http" | "https" => Some(parsed_link.to_string()),
-            _ => None
-        }
-    }).unwrap_or_else(|| {
-        percent_encode(&format!("data:text/html;charset=utf8,<h1>Invalid link: <code>{}</code></h1>", sanitize_text(&link)))
-    });
+            _ => None,
+        })
+        .unwrap_or_else(|| {
+            percent_encode(&format!(
+                "data:text/html;charset=utf8,<h1>Invalid link: <code>{}</code></h1>",
+                sanitize_text(&link)
+            ))
+        });
     link
 }

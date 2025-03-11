@@ -1,4 +1,3 @@
-
 #[allow(unused)]
 #[macro_use]
 extern crate tracing;
@@ -7,17 +6,18 @@ use tokio::signal::unix::{signal, SignalKind};
 use tokio_util::sync::CancellationToken;
 
 pub mod args;
-pub mod utils;
 pub mod log;
 pub mod template;
+pub mod utils;
 
-
-type BoxedTask = Box<dyn FnOnce(CancellationToken) -> Box<dyn std::future::Future<Output = ()> + Send + 'static>>;
+type BoxedTask = Box<
+    dyn FnOnce(CancellationToken) -> Box<dyn std::future::Future<Output = ()> + Send + 'static>,
+>;
 
 pub fn handler<Func, Fut>(f: Func) -> BoxedTask
 where
     Func: FnOnce(CancellationToken) -> Fut + 'static,
-    Fut: std::future::Future<Output = ()> + Send + 'static
+    Fut: std::future::Future<Output = ()> + Send + 'static,
 {
     Box::new(move |c| Box::new(f(c)))
 }
@@ -65,7 +65,7 @@ pub async fn run(
     for (ident, task) in tasks {
         let cancel_child = cancel.child_token();
         let future = task(cancel_child);
-        let span = tracing::info_span!("task", name=ident).or_current();
+        let span = tracing::info_span!("task", name = ident).or_current();
         join_set.spawn(async move {
             log::instrument(span, Box::into_pin(future)).await;
             ident
@@ -109,11 +109,11 @@ pub async fn run(
             Action::Reload(msg) => {
                 info!("{msg}, reloading config");
                 reload();
-            },
+            }
             Action::Exit(msg) => {
                 warn!("{msg}, starting shutdown");
                 break;
-            },
+            }
         }
     }
 
@@ -139,22 +139,23 @@ pub async fn run(
                 Action::Exit(msg) => {
                     warn!("{msg}, exiting immediately");
                     break;
-                },
+                }
             }
         }
 
         info!("Exiting");
-    }).await;
+    })
+    .await;
 
     Ok(())
 }
 
 pub async fn cancellable<F, T>(cancel: &tokio_util::sync::CancellationToken, f: F) -> Option<T>
-    where F: std::future::Future<Output = T>
+where
+    F: std::future::Future<Output = T>,
 {
     tokio::select! {
         v = f => Some(v),
         _ = cancel.cancelled() => None,
     }
 }
-

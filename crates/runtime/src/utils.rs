@@ -1,4 +1,3 @@
-
 pub mod parse_mut {
     pub fn take_char(input: &mut &str) -> Option<char> {
         let mut chars = input.chars();
@@ -26,12 +25,13 @@ pub mod parse {
     }
     pub fn take_while(input: &str, f: impl Fn(char) -> bool) -> (&str, &str) {
         for (i, c) in input.char_indices() {
-            if !f(c) { return input.split_at(i); }
+            if !f(c) {
+                return input.split_at(i);
+            }
         }
         (input, "")
     }
 }
-
 
 // Adapted from anyhow's debug formatter
 struct Indented<'a, T> {
@@ -39,7 +39,10 @@ struct Indented<'a, T> {
     indent: usize,
     prefix: Option<&'a str>,
 }
-impl<'a, T> Indented<'a, T> where T: std::fmt::Write {
+impl<'a, T> Indented<'a, T>
+where
+    T: std::fmt::Write,
+{
     fn new(inner: &'a mut T, indent: usize, prefix: Option<&'a str>) -> Self {
         Indented {
             inner,
@@ -48,16 +51,19 @@ impl<'a, T> Indented<'a, T> where T: std::fmt::Write {
         }
     }
 }
-impl<'a, T> std::fmt::Write for Indented<'a, T> where T: std::fmt::Write {
+impl<'a, T> std::fmt::Write for Indented<'a, T>
+where
+    T: std::fmt::Write,
+{
     fn write_str(&mut self, s: &str) -> std::fmt::Result {
         let mut first_segment = true;
         for line in s.split('\n') {
             if let Some(prefix) = self.prefix.take() {
-                write!(self.inner, "{:>width$}", prefix, width=self.indent)?;
+                write!(self.inner, "{:>width$}", prefix, width = self.indent)?;
             } else if !first_segment {
                 // If we have reached a newline; print out an equivalent and then indentation
                 self.inner.write_char('\n')?;
-                write!(self.inner, "{:>width$}", "", width=self.indent)?;
+                write!(self.inner, "{:>width$}", "", width = self.indent)?;
             }
             self.inner.write_str(line)?;
             first_segment = false;
@@ -66,7 +72,11 @@ impl<'a, T> std::fmt::Write for Indented<'a, T> where T: std::fmt::Write {
     }
 }
 
-pub fn format_error<E, W>(f: &mut W, error: &E) -> Result<(), std::fmt::Error> where W: std::fmt::Write, E: std::error::Error {
+pub fn format_error<E, W>(f: &mut W, error: &E) -> Result<(), std::fmt::Error>
+where
+    W: std::fmt::Write,
+    E: std::error::Error,
+{
     use std::fmt::Write;
     write!(f, "{}", error)?;
 
@@ -86,16 +96,21 @@ pub fn format_error<E, W>(f: &mut W, error: &E) -> Result<(), std::fmt::Error> w
     Ok(())
 }
 
-pub fn format_error_disp<'a, E>(e: &'a E) -> impl std::fmt::Display + 'a where E: std::error::Error {
+pub fn format_error_disp<'a, E>(e: &'a E) -> impl std::fmt::Display + 'a
+where
+    E: std::error::Error,
+{
     struct Disp<'a, E>(&'a E);
-    impl<E> std::fmt::Display for Disp<'_, E> where E: std::error::Error {
+    impl<E> std::fmt::Display for Disp<'_, E>
+    where
+        E: std::error::Error,
+    {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             format_error(f, self.0)
         }
     }
     Disp(e)
 }
-
 
 /*
 Adapted from https://github.com/oliver-giersch/closure
@@ -163,7 +178,6 @@ macro_rules! _enclose {
 #[doc(inline)]
 pub use crate::_enclose as enclose;
 
-
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __extract_last_ident {
@@ -173,13 +187,18 @@ macro_rules! __extract_last_ident {
     (mut $ignore:ident.$($tail:ident).+) => { $crate::__extract_last_ident!(mut $($tail).+) };
 }
 
-
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __assert_move_closure {
-    (async move $($tt:tt)*) => { };
-    (async $($tt:tt)*) => { ::core::compile_error!("async block must be `move`") };
-    (move $($tt:tt)*) => { };
-    (|$($tt:tt)*) => { ::core::compile_error!("closure must be `move`") };
-    (||$($tt:tt)*) => { ::core::compile_error!("closure must be `move`") };
+    (async move $($tt:tt)*) => {};
+    (async $($tt:tt)*) => {
+        ::core::compile_error!("async block must be `move`")
+    };
+    (move $($tt:tt)*) => {};
+    (|$($tt:tt)*) => {
+        ::core::compile_error!("closure must be `move`")
+    };
+    (||$($tt:tt)*) => {
+        ::core::compile_error!("closure must be `move`")
+    };
 }

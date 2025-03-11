@@ -1,13 +1,14 @@
-
 use tracing_subscriber::filter::Targets;
-use tracing_subscriber::registry::Registry;
 use tracing_subscriber::layer::{Layer, SubscriberExt};
+use tracing_subscriber::registry::Registry;
 
 use crate::utils::parse::{take_char, take_while};
 
-
 #[inline]
-pub async fn instrument<F, O>(span: tracing::Span, f: F) -> O where F: std::future::Future<Output = O> {
+pub async fn instrument<F, O>(span: tracing::Span, f: F) -> O
+where
+    F: std::future::Future<Output = O>,
+{
     use tracing::Instrument;
     f.instrument(span).await
 }
@@ -30,7 +31,6 @@ macro_rules! instrument {
         $crate::instrument!(@ [$name] [$($captured)* $next] $($rest)*)
     };
 }
-
 
 /// Safe in any html destination besides unquoted attributes (why do those exist...)
 fn write_html_escaped(w: &mut impl std::fmt::Write, text: &str) -> std::fmt::Result {
@@ -68,7 +68,7 @@ pub fn ansi_to_html(msg: &str) -> String {
     while let Some(i) = msg.find("\x1b[") {
         out.push_str(&msg[..i]);
 
-        let mut new_msg = &msg[i + 2 ..];
+        let mut new_msg = &msg[i + 2..];
         let (params, interm, end);
 
         (params, new_msg) = take_while(new_msg, |c| matches!(c, '\x30'..='\x3F'));
@@ -79,7 +79,9 @@ pub fn ansi_to_html(msg: &str) -> String {
             msg = new_msg;
             match (params, interm, c) {
                 ("0", "", 'm') => {
-                    for _ in 0..count { out.push_str("</span>"); }
+                    for _ in 0..count {
+                        out.push_str("</span>");
+                    }
                     count = 0;
                 }
                 _ => {
@@ -92,8 +94,8 @@ pub fn ansi_to_html(msg: &str) -> String {
                 }
             }
         } else {
-            out.push_str(&msg[i .. i + 2]);
-            msg = &msg[i + 2 ..]
+            out.push_str(&msg[i..i + 2]);
+            msg = &msg[i + 2..]
         }
     }
     out.push_str(&msg);
@@ -134,7 +136,8 @@ impl std::io::Write for AnsiHtmlWriter {
     }
 }
 
-pub static LOG_LISTENER: std::sync::OnceLock<tokio::sync::broadcast::Sender<std::sync::Arc<str>>> = std::sync::OnceLock::new();
+pub static LOG_LISTENER: std::sync::OnceLock<tokio::sync::broadcast::Sender<std::sync::Arc<str>>> =
+    std::sync::OnceLock::new();
 
 #[derive(Debug, thiserror::Error)]
 pub enum LoggerError {
@@ -146,13 +149,19 @@ pub enum LoggerError {
     SetFailed(tracing::subscriber::SetGlobalDefaultError),
 }
 
-pub fn setup_logger(crate_name: &'static str) -> Result<tokio::sync::broadcast::Receiver<std::sync::Arc<str>>, LoggerError> {
+pub fn setup_logger(
+    crate_name: &'static str,
+) -> Result<tokio::sync::broadcast::Receiver<std::sync::Arc<str>>, LoggerError> {
     let env_targets = std::env::var("RUST_LOG")
         .unwrap_or_else(|_| format!("{}=trace,runtime=debug,tower_http=debug,warn", crate_name));
-    let env_filter = env_targets.parse::<Targets>().map_err(LoggerError::InvalidLogEnv)?;
+    let env_filter = env_targets
+        .parse::<Targets>()
+        .map_err(LoggerError::InvalidLogEnv)?;
 
     let (tx, rx) = tokio::sync::broadcast::channel(10);
-    LOG_LISTENER.set(tx.clone()).map_err(|_| LoggerError::AlreadySet)?;
+    LOG_LISTENER
+        .set(tx.clone())
+        .map_err(|_| LoggerError::AlreadySet)?;
 
     let subscriber = Registry::default()
         // .with(tracing_subscriber::fmt::layer().with_filter(env_filter.clone()))
@@ -169,8 +178,7 @@ pub fn setup_logger(crate_name: &'static str) -> Result<tokio::sync::broadcast::
             // .with_filter(env_filter.clone()))
         ;
 
-    tracing::subscriber::set_global_default(subscriber)
-        .map_err(LoggerError::SetFailed)?;
+    tracing::subscriber::set_global_default(subscriber).map_err(LoggerError::SetFailed)?;
 
     Ok(rx)
 }

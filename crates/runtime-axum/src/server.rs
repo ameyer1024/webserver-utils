@@ -12,13 +12,15 @@ pub async fn run_server(
 ) -> Result<(), std::io::Error> {
     let handle = axum_server::Handle::new();
 
-    tokio::task::spawn(instrument!("shutdown task"; enclose!([clone handle] async move {
-        cancel.cancelled().await;
+    tokio::task::spawn(
+        instrument!("shutdown task"; enclose!([clone handle] async move {
+            cancel.cancelled().await;
 
-        let timeout = std::time::Duration::from_secs(8);
-        info!("Attempting graceful webserver shutdown with {}s timeout", timeout.as_secs_f32());
-        handle.graceful_shutdown(Some(timeout));
-    })));
+            let timeout = std::time::Duration::from_secs(8);
+            info!("Attempting graceful webserver shutdown with {}s timeout", timeout.as_secs_f32());
+            handle.graceful_shutdown(Some(timeout));
+        })),
+    );
 
     axum_server::bind(bind)
         .handle(handle)

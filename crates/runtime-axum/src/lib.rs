@@ -1,4 +1,3 @@
-
 #[allow(unused)]
 #[macro_use]
 extern crate tracing;
@@ -8,7 +7,6 @@ use std::sync::Arc;
 
 pub mod layers;
 pub mod server;
-
 
 pub struct ServerState<T> {
     pub cookie_key: axum_extra::extract::cookie::Key,
@@ -73,9 +71,15 @@ impl<T> ServerState<T> {
 pub struct ExtractUserAgent(pub Option<String>);
 
 #[axum::async_trait]
-impl<S> axum::extract::FromRequestParts<S> for ExtractUserAgent where S: Send + Sync {
+impl<S> axum::extract::FromRequestParts<S> for ExtractUserAgent
+where
+    S: Send + Sync,
+{
     type Rejection = std::convert::Infallible;
-    async fn from_request_parts(parts: &mut axum::http::request::Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        _state: &S,
+    ) -> Result<Self, Self::Rejection> {
         if let Some(user_agent) = parts.headers.get(axum::http::header::USER_AGENT) {
             let ua = String::from_utf8_lossy(user_agent.as_bytes()).into_owned();
             Ok(ExtractUserAgent(Some(ua)))
@@ -84,4 +88,3 @@ impl<S> axum::extract::FromRequestParts<S> for ExtractUserAgent where S: Send + 
         }
     }
 }
-

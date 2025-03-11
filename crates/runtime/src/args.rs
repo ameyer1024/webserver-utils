@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ArgError {
     #[error("Invalid boolean flag: {:?}", .0)]
@@ -18,7 +17,9 @@ pub fn parse_flag_optional_bool(value: Option<&str>) -> Result<bool, ArgError> {
 }
 /// Parse a required parameter for an option, either inline or as the next arg
 pub fn parse_param(
-    flag: &str, args: &mut impl Iterator<Item = String>, inline: Option<&str>
+    flag: &str,
+    args: &mut impl Iterator<Item = String>,
+    inline: Option<&str>,
 ) -> Result<String, ArgError> {
     match inline {
         Some(v) => Ok(v.into()),
@@ -49,15 +50,18 @@ where
                 in_flags = false;
             } else {
                 let res = handle_flag(flag, inline, &mut args, &arg0)?;
-                if res == None { return Ok(None); }
+                if res == None {
+                    return Ok(None);
+                }
             }
         } else {
             let res = handle_pos(pos_index, arg)?;
-            if res == None { return Ok(None); }
+            if res == None {
+                return Ok(None);
+            }
             pos_index += 1;
         }
     }
 
     Ok(Some(()))
 }
-

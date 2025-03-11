@@ -1,4 +1,3 @@
-
 mod wrapper {
     use std::pin::Pin;
 
@@ -12,9 +11,15 @@ mod wrapper {
             Self { inner }
         }
     }
-    impl<T> std::future::Future for UnsafeSendWrapper<T> where T: std::future::Future {
+    impl<T> std::future::Future for UnsafeSendWrapper<T>
+    where
+        T: std::future::Future,
+    {
         type Output = T::Output;
-        fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        fn poll(
+            self: Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Self::Output> {
             let this = self.project();
             this.inner.poll(cx)
         }
@@ -25,30 +30,43 @@ pub use wrapper::UnsafeSendWrapper;
 
 #[must_use]
 pub fn coro_await<'a, F, Out>(f: F) -> CoroAwaitFuture<'a, Out>
-    where F: FnOnce(&CoroAwaiter<'_>) -> Out + 'a,
-        Out: 'a,
+where
+    F: FnOnce(&CoroAwaiter<'_>) -> Out + 'a,
+    Out: 'a,
 {
-    let coroutine = corosensei::ScopedCoroutine::<*mut std::task::Context<'static>, (), Out, corosensei::stack::DefaultStack>::new(move |yielder, res| {
+    let coroutine = corosensei::ScopedCoroutine::<
+        *mut std::task::Context<'static>,
+        (),
+        Out,
+        corosensei::stack::DefaultStack,
+    >::new(move |yielder, res| {
         let awaiter = CoroAwaiter {
             yielder,
             context: std::cell::Cell::new(Some(res)),
         };
         f(&awaiter)
     });
-    CoroAwaitFuture {
-        coroutine,
-    }
+    CoroAwaitFuture { coroutine }
 }
 
 pub struct CoroAwaitFuture<'a, Out: 'a> {
-    coroutine: corosensei::ScopedCoroutine::<'a, *mut std::task::Context<'static>, (), Out, corosensei::stack::DefaultStack>,
+    coroutine: corosensei::ScopedCoroutine<
+        'a,
+        *mut std::task::Context<'static>,
+        (),
+        Out,
+        corosensei::stack::DefaultStack,
+    >,
 }
 
 impl<'a, Out> std::future::Future for CoroAwaitFuture<'a, Out> {
     type Output = Out;
-    fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
         use corosensei::CoroutineResult as CoResult;
-        use std::task::{Poll, Context};
+        use std::task::{Context, Poll};
 
         match self.coroutine.resume(cx as *mut _ as *mut Context<'static>) {
             CoResult::Yield(_) => Poll::Pending,
@@ -90,7 +108,7 @@ impl<'a> CoroAwaiter<'a> {
                 std::task::Poll::Ready(res) => {
                     self.context.set(Some(context));
                     return res;
-                },
+                }
                 std::task::Poll::Pending => {
                     // Borrow on context is not held across suspend point.
                     // The lifetime of the old context ends when this is called,
