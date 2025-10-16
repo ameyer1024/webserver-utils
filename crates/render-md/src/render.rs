@@ -1,5 +1,6 @@
 use crate::coawait::{coro_await, UnsafeSendWrapper};
 use std::future::Future;
+use std::pin::Pin;
 
 #[derive(serde::Deserialize, Default)]
 pub struct Metadata {
@@ -9,10 +10,9 @@ pub struct Metadata {
     pub _rest: std::collections::HashMap<String, serde_yaml::Value>,
 }
 
-pub async fn rewrite_html<F, Fu>(html: String, handle_embed: F) -> Result<String, anyhow::Error>
+pub fn rewrite_html<'a, F>(html: String, handle_embed: &'a F) -> impl Future<Output = Result<String, anyhow::Error>> + use<'a, F>
 where
-    F: Fn(String, bool) -> Fu + 'static,
-    Fu: Future<Output = Result<Option<String>, anyhow::Error>> + 'static,
+    F: Fn(String, bool) -> Pin<Box<dyn Future<Output = Result<Option<String>, anyhow::Error>> + 'a>> + 'a,
 {
     use lol_html::{element, rewrite_str, RewriteStrSettings};
 
@@ -29,7 +29,11 @@ where
         handle_embed(url.into(), preview).await
     }
 
-    let future = async move {
+    let frozen = crate::freeze::Frozen::<crate::freeze::Freeze![&'freeze dyn Fn(String, bool) -> Pin<Box<dyn Future<Output = Result<Option<String>, anyhow::Error>> + 'freeze>>]>::new();
+    let handle = frozen.clone();
+    let guard = crate::freeze::FreezeGuardOwned::new(frozen, handle_embed);
+
+    let future = guard.scope_async_move(async move {
         coro_await(move |awaiter| {
             // let buffer = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
 
@@ -100,11 +104,13 @@ where
                 element!("a[embed]", |el| {
                     if let Some(url) = el.get_attribute("href") {
                         let preview = matches!(el.get_attribute("embed").as_deref(), Some("full"));
-                        let rendered = awaiter
-                            .block_on(async { render_embed(&url, preview, &handle_embed).await });
-                        if let Ok(Some(rendered)) = rendered {
-                            el.replace(&rendered, lol_html::html_content::ContentType::Html);
-                        }
+                        handle.try_with(|h| {
+                            let rendered = awaiter
+                                .block_on(async { render_embed(&url, preview, &h).await });
+                            if let Ok(Some(rendered)) = rendered {
+                                el.replace(&rendered, lol_html::html_content::ContentType::Html);
+                            }
+                        }).unwrap()
                     }
                     Ok(())
                 }),
@@ -137,7 +143,7 @@ where
         })
         .await
         .map_err(Into::into)
-    };
+    });
 
     // Safety:
     //
@@ -150,18 +156,18 @@ where
     // though its contents cannot be sent between *tasks*.
     //
     // Somewhat relevant: https://matklad.github.io/2023/12/10/nsfw.html
-    unsafe { UnsafeSendWrapper::new(future) }.await
+    unsafe { UnsafeSendWrapper::new(future) }
 }
 
 #[tracing::instrument(skip(source, handle_embed))]
-pub async fn render_page_markdown<F, Fu>(
+pub async fn render_page_markdown<'a, F, Fu>(
     source: &str,
     base_url: Option<&str>,
     handle_embed: F,
 ) -> Result<(String, Metadata), anyhow::Error>
 where
-    F: Fn(String, bool) -> Fu + 'static,
-    Fu: Future<Output = Result<Option<String>, anyhow::Error>> + 'static,
+    F: Fn(String, bool) -> Fu + 'a,
+    Fu: Future<Output = Result<Option<String>, anyhow::Error>> + 'a,
 {
     let (mut html, meta) = crate::process_markdown(source, base_url);
     let meta = meta
@@ -178,7 +184,7 @@ where
         }
     };
 
-    html = rewrite_html(html, handle_embed).await?;
+    html = rewrite_html(html, &|s, b| Box::pin(handle_embed(s, b))).await?;
 
     // let sanitized = runtime::template::sanitize_html_trusted(&html);
     let sanitized = html;

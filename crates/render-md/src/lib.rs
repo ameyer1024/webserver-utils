@@ -5,6 +5,7 @@ pub mod coawait;
 pub mod markdown;
 pub mod render;
 pub mod sanitize;
+pub mod freeze;
 
 use pulldown_cmark::CowStr;
 

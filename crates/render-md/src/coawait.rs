@@ -75,7 +75,7 @@ pub struct CoroAwaiter<'a> {
 }
 
 impl<'a> CoroAwaiter<'a> {
-    pub fn block_on<O>(&self, mut f: impl std::future::Future<Output = O>) -> O {
+    pub fn block_on<O>(&self, f: impl std::future::Future<Output = O>) -> O {
         let mut pinned = std::pin::pin!(f);
         let mut context = self.context.take().unwrap();
         loop {
